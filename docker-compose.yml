@@ -1,0 +1,38 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    environment:
+      ROLE: api
+      N_MIGRATE_BROKER_URL: redis://redis:6379/0
+      N_MIGRATE_DATABASE_URL: sqlite:////data/n_migrate.db
+    volumes:
+      - n-migrate-data:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    working_dir: /data  # so the sqlite file lands in the named volume
+
+  worker:
+    build: .
+    environment:
+      ROLE: worker
+      N_MIGRATE_BROKER_URL: redis://redis:6379/0
+      N_MIGRATE_DATABASE_URL: sqlite:////data/n_migrate.db
+    volumes:
+      - n-migrate-data:/data
+      # For real migrations, the worker needs network/credential access
+      # to your actual hypervisors -- this compose file gets you a
+      # working API + queue to test against, not a full lab network.
+      # See LAB_TESTING.md for running the worker outside Docker if it
+      # needs direct access to a libvirt socket, admin shares, etc.
+    depends_on:
+      - redis
+
+volumes:
+  n-migrate-data:
